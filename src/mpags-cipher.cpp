@@ -6,6 +6,7 @@
 
 #include "transformChar.hpp"
 #include "ProcessCommandLine.hpp"
+#include "runCaesarCipher.hpp"
 
 
 
@@ -27,10 +28,13 @@ int main(int argc, char* argv[])
     bool versionRequested{false};
     std::string inputFile{""};
     std::string outputFile{""};
+    size_t key{0};
+    // initialise as true (encrypt) to start with
+    bool encrypt{true};
 
 
     
-    const bool cmdLineStatus{ProcessCommandLine(cmdLineArgs, helpRequested, versionRequested, inputFile, outputFile)};
+    const bool cmdLineStatus{ProcessCommandLine(cmdLineArgs, helpRequested, versionRequested, inputFile, outputFile, key, encrypt)};
 
     if (!cmdLineStatus){
         return 1;
@@ -42,7 +46,7 @@ int main(int argc, char* argv[])
     if (helpRequested) {
         // Line splitting for readability
         std::cout
-            << "Usage: mpags-cipher [-h/--help] [--version] [-i <file>] [-o <file>]\n\n"
+            << "Usage: mpags-cipher [-h/--help] [--version] [-i <file>] [-o <file>] [-k <key>] [encypt/decrypt]\n\n"
             << "Encrypts/Decrypts input alphanumeric text using classical ciphers\n\n"
             << "Available options:\n\n"
             << "  -h|--help        Print this help message and exit\n\n"
@@ -51,6 +55,9 @@ int main(int argc, char* argv[])
             << "                   Stdin will be used if not supplied\n\n"
             << "  -o FILE          Write processed text to FILE\n"
             << "                   Stdout will be used if not supplied\n\n"
+            << "  -k int(key)      Provide an integer number as the cipher key for encypting/decrypting the input text\n\n"
+            << "  bool\n\n"
+            << "  (encypt/decrypt) Provide a boolean [True/False] to indicate encyption or decryption of the input text\n\n"
             << std::endl;
         // Help requires no further action, so return from main
         // with 0 used to indicate success
@@ -68,30 +75,77 @@ int main(int argc, char* argv[])
     // Initialise variables
     char inputChar{'x'};
     std::string inputText;
+    std::string cipherOutputText;
 
-    // Read in user input from stdin/file
-    // Warn that input file option not yet implemented
+    // Read in user input from file if we have one
     if (!inputFile.empty()) {
-        std::cerr << "[warning] input from file ('" << inputFile
-                  << "') not implemented yet, using stdin\n";
-    }
 
-    // loop over each character from user input
-    while (std::cin >> inputChar) {
+        std::ifstream in_file {inputFile};
         
-        // transform the input string into a suitable form for input into cipher
-        inputText += transformChar(inputChar);
-    } 
 
-    // Print out the transliterated text
+        // Only reading in if its good to read
 
-    // Warn that output file option not yet implemented
-    if (!outputFile.empty()) {
-        std::cerr << "[warning] output to file ('" << outputFile
-                  << "') not implemented yet, using stdout\n";
+        // if the istream didn't work
+        if (!in_file.good()) {
+            
+            // print error message
+            std::cerr << "[error] Failed to create istream on file " << inputFile << " and read" << std::endl;
+            return 1;
+        }
+
+
+        // Assuming it did work, take each caharcter from the inut file an add it to the inputChar string
+        while (in_file >> inputChar){
+            inputText += transformChar(inputChar);
+
+        }
+       
+        
+
+        
+    } else {
+        // Take input from the command line if an input file was not given
+        // loop over each character from user input
+        while (std::cin >> inputChar) {
+        
+            // transform the input string into a suitable form for input into cipher
+            inputText += transformChar(inputChar);
+            } 
+
     }
 
-    std::cout << inputText << std::endl;
+    // Take the transliterated text and apply the cipher to it to encrypt/decrypt it.
+    cipherOutputText = runCaesarCipher(inputText, key, encrypt);
+
+    
+
+    // Write the transliterated text to the output file
+    if (!outputFile.empty()) {
+        // open the file and check its ok to be used to write to
+        std::ofstream out_file {outputFile};
+
+        // Only writing if it's good to write
+
+        if (!out_file.good()){
+            // print error message
+            std::cerr << "[error] Failed to create ostream on " << outputFile << " and write" << std::endl;
+            return 1;
+        } 
+    
+        // Assuming the file is good to write to, print the transformed text to the output file
+        out_file << inputText << std::endl;
+    
+
+
+    // print to command line if no output file was given
+    } else {
+
+        std::cout << inputText << std::endl;
+
+    }
+
+    // Need to call the Ceasar Cipher function to take the key and the encrypt/decrypt boolean and apply the cipher to the input text.
+
 
     // No requirement to return from main, but we do so for clarity
     // and for consistency with other functions
